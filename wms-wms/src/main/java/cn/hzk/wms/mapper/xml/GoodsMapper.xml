@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.hzk.wms.mapper.GoodsMapper">
+
+<!--    通过物资id查询物资详情及标签-->
+    <select id="findGoodsAndLabelById" resultMap="GoodsAndLabelMap">
+        SELECT
+            m1.*, m3.id label_id,
+            m3.`name` label_name
+        FROM
+            wms_goods m1
+        LEFT JOIN wms_goods_label m2 ON m1.id = m2.goods_id
+        LEFT JOIN wms_label m3 ON m2.label_id = m3.id
+        WHERE
+            m1.id = #{id}
+    </select>
+
+    <resultMap id="GoodsAndLabelMap" type="Goods" >
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="nick_name" property="nickName" />
+        <result column="user_image" property="userImage" />
+        <result column="title" property="title" />
+        <result column="summary" property="summary" />
+        <result column="md_content" property="mdContent" />
+        <result column="html_content" property="htmlContent" />
+        <result column="view_count" property="viewCount" />
+        <result column="thumhup" property="thumhup" />
+        <result column="status" property="status" />
+        <result column="ispublic" property="ispublic" />
+        <result column="create_date" property="createDate" />
+        <result column="update_date" property="updateDate" />
+        <!-- 封装标签id集合 -->
+        <collection property="labelIds" javaType="list" ofType="string">
+            <id column="label_id" property="id"></id>
+        </collection>
+
+        <!-- 封装标签对象集合 -->
+        <collection property="labelList" javaType="list" ofType="Label">
+            <id column="label_id" property="id"/>
+            <result column="label_name" property="name"></result>
+        </collection>
+    </resultMap>
+
+<!--  通过物资id删除物资标签表数据-->
+    <delete id="deleteGoodsLabel">
+        DELETE FROM wms_goods_label WHERE goods_id = #{goodsId}
+    </delete>
+
+<!--    新增物资标签中间表数据-->
+    <insert id="saveGoodsLabel">
+        INSERT INTO wms_goods_label(id, goods_id, label_id)
+        VALUES
+        <foreach collection="labelIds" item="item" separator=",">
+            ( '${@com.baomidou.mybatisplus.core.toolkit.IdWorker@getId()}', #{goodsId}, #{item})
+        </foreach>
+    </insert>
+
+<!--    通过分类id或标签id查询公开且已审核通过的物资列表-->
+    <select id="findListByLabelIdOrCategoryId" resultType="Goods">
+        SELECT
+            DISTINCT m3.*
+        FROM
+            wms_label m1
+        JOIN wms_goods_label m2 ON m1.id = m2.label_id
+        JOIN wms_goods m3 ON m2.goods_id = m3.id
+        WHERE m3.ispublic = 1 AND m3.`status` = 2
+        <if test="req.labelId != null and req.labelId != ''">
+            AND m1.id = #{req.labelId}
+        </if>
+        <if test="req.categoryId !=null and req.categoryId != ''">
+            AND m1.category_id = #{req.categoryId}
+        </if>
+        ORDER BY m3.update_date DESC
+
+    </select>
+
+<!--    通过视图统计各分类下的物资数-->
+    <select id="selectCategoryTotal" resultType="map" >
+        SELECT `name`, `value` FROM v_category_total
+    </select>
+
+<!--统计近6个月发布的物资数（调用视图）-->
+    <select id="selectMonthGoodsTotal" resultType="map">
+        SELECT `year_month`, `total` FROM v_month_aritcle_total
+    </select>
+
+</mapper>
